@@ -146,6 +146,75 @@ router.patch("/edit/dp", isLoggedIn, async(req, res) => {
     }
 })
 
+router.patch("/follow/:userId", isLoggedIn, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
+    const targetUser = await User.findById(req.params.userId);
+
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    if (loggedInUser._id.toString() === targetUser._id.toString()) {
+      throw new Error("You cannot follow yourself");
+    }
+
+    const alreadyFollowing = loggedInUser.following.includes(targetUser._id);
+
+    if (alreadyFollowing) {
+      throw new Error("You already follow this user");
+    }
+
+    loggedInUser.following.push(targetUser._id);
+    targetUser.followers.push(loggedInUser._id);
+
+    await loggedInUser.save();
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      msg: "User followed",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      err: error.message,
+    });
+  }
+});
+
+router.patch("/unfollow/:userId", isLoggedIn, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
+    const targetUser = await User.findById(req.params.userId);
+
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    loggedInUser.following = loggedInUser.following.filter(
+      (id) => id.toString() !== targetUser._id.toString()
+    );
+
+    targetUser.followers = targetUser.followers.filter(
+      (id) => id.toString() !== loggedInUser._id.toString()
+    );
+
+    await loggedInUser.save();
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      msg: "User unfollowed",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      err: error.message,
+    });
+  }
+});
+
 
 module.exports = {
     profileRouter : router
